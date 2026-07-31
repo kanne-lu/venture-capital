@@ -314,6 +314,16 @@ export default function VentureDemo() {
     summary: "",
   });
 
+  useEffect(() => {
+    const roleParam = new URLSearchParams(window.location.search).get("role");
+    if (!roleParam || !roles.includes(roleParam as Role)) return;
+
+    const role = roleParam as Role;
+    setSelectedRole(role);
+    setWorkspaceOpen(true);
+    window.history.replaceState(null, "", `${window.location.pathname}#market`);
+  }, []);
+
   const allProjects = useMemo(() => [...customProjects, ...seedProjects], [customProjects]);
   const publicProjects = useMemo(
     () => allProjects.filter((project) => project.status === "已通过"),
@@ -331,7 +341,6 @@ export default function VentureDemo() {
   }, [city, industry, publicProjects, query, stage]);
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
-  const currentRoleLabel = selectedRole === "访客" ? "选择身份" : selectedRole;
 
   const notify = (message: string) => {
     setToast(message);
@@ -447,7 +456,7 @@ export default function VentureDemo() {
             <button className="header-link notification-trigger" onClick={() => { setNotificationsOpen(true); setNotifications((current) => current.map((item) => ({ ...item, read: true }))); }} aria-label="查看通知">
               <Icon name="bell" size={18} />{unreadCount > 0 && <span className="notification-dot">{unreadCount}</span>}
             </button>
-            <button className="role-button" onClick={() => setRolePanelOpen(true)}>{currentRoleLabel}<Icon name="chevron" size={13} /></button>
+            {selectedRole === "访客" ? <Link className="role-button" href="/login">选择身份<Icon name="chevron" size={13} /></Link> : <button className="role-button" onClick={() => setRolePanelOpen(true)}>{selectedRole}<Icon name="chevron" size={13} /></button>}
           </div>
         </div>
       </header>
@@ -514,7 +523,7 @@ export default function VentureDemo() {
               </section>
 
               <section className="feature-band">
-                <div className="feature-copy"><span className="feature-label">FOR CAPITAL</span><h3>找到与你长期主义<br /><em>同频的项目</em></h3><p>用结构化信息，节省每一次项目判断的时间。</p><button onClick={() => setRolePanelOpen(true)}>进入我的工作台 <Icon name="arrow" size={15} /></button></div>
+                <div className="feature-copy"><span className="feature-label">FOR CAPITAL</span><h3>找到与你长期主义<br /><em>同频的项目</em></h3><p>用结构化信息，节省每一次项目判断的时间。</p><Link href="/login">进入我的工作台 <Icon name="arrow" size={15} /></Link></div>
                 <div className="orbit-art"><span className="orbit orbit-a" /><span className="orbit orbit-b" /><span className="orbit-core">优</span><span className="art-tag art-tag-a">A 轮 · 36 项</span><span className="art-tag art-tag-b">新能源</span></div>
               </section>
             </div>
