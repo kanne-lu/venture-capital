@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, KeyboardEvent } from "react";
+import Link from "next/link";
 
 type Role = "访客" | "投资机构" | "FA" | "政府招商" | "项目方";
 type ProjectStatus = "已通过" | "待审核";
@@ -435,6 +436,7 @@ export default function VentureDemo() {
                 {item}{item !== "项目市场" && <span className="nav-arrow"><Icon name="chevron" size={12} /></span>}
               </button>
             ))}
+            <Link href="/about" className="nav-link">平台介绍</Link>
           </nav>
           <div className="header-actions">
             <label className="mini-search">
