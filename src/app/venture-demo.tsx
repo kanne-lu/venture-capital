@@ -1,6 +1,7 @@
 "use client";
 
-import { ChangeEvent, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
 
 type Role = "访客" | "投资机构" | "FA" | "政府招商" | "项目方";
 type ProjectStatus = "已通过" | "待审核";
@@ -170,6 +171,115 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 
 function showAmount(amount: string) {
   return amount.replace(" 万", "");
+}
+
+type FilterDropdownProps = {
+  id: string;
+  label: string;
+  ariaLabel?: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  variant?: "filter" | "field";
+};
+
+function FilterDropdown({ id, label, ariaLabel, value, options, onChange, variant = "filter" }: FilterDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(Math.max(options.indexOf(value), 0));
+  const rootRef = useRef<HTMLDivElement>(null);
+  const currentIndex = Math.max(options.indexOf(value), 0);
+  const menuId = `${id}-options`;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  const chooseOption = (nextValue: string) => {
+    onChange(nextValue);
+    setHighlightedIndex(Math.max(options.indexOf(nextValue), 0));
+    setOpen(false);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "Tab") {
+      setOpen(false);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      return;
+    }
+
+    if (!open && ["Enter", " ", "ArrowDown", "ArrowUp"].includes(event.key)) {
+      event.preventDefault();
+      setHighlightedIndex(currentIndex);
+      setOpen(true);
+      return;
+    }
+
+    if (!open) return;
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setHighlightedIndex((index) => (index + direction + options.length) % options.length);
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      setHighlightedIndex(event.key === "Home" ? 0 : options.length - 1);
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      chooseOption(options[highlightedIndex]);
+    }
+  };
+
+  return (
+    <div id={id} className={`filter-control ${variant === "field" ? "field-control" : ""} ${open ? "is-open" : ""}`} ref={rootRef}>
+      {label && <span className="filter-label">{label}</span>}
+      <button
+        type="button"
+        className="filter-trigger"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-controls={menuId}
+        onClick={() => {
+          setHighlightedIndex(currentIndex);
+          setOpen((current) => !current);
+        }}
+        onKeyDown={handleKeyDown}
+      >
+        <span>{value}</span>
+        <Icon name="chevron" size={13} />
+      </button>
+      {open && (
+        <div className="filter-menu" id={menuId} role="listbox" aria-label={`${ariaLabel || label}筛选`}>
+          {options.map((option, index) => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={value === option}
+              className={`filter-option ${value === option ? "selected" : ""} ${highlightedIndex === index ? "highlighted" : ""}`}
+              key={option}
+              onMouseEnter={() => setHighlightedIndex(index)}
+              onClick={() => chooseOption(option)}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function VentureDemo() {
@@ -385,9 +495,9 @@ export default function VentureDemo() {
                   <button className="more-link" onClick={() => setQuery("")}>查看全部 <Icon name="arrow" size={15} /></button>
                 </div>
                 <div className="filter-row">
-                  <label><span>行业</span><select value={industry} onChange={(event) => setIndustry(event.target.value)}><option>全部行业</option><option>智能制造</option><option>绿色科技</option><option>医疗健康</option><option>企业服务</option><option>机器人</option><option>消费零售</option></select><Icon name="chevron" size={13} /></label>
-                  <label><span>阶段</span><select value={stage} onChange={(event) => setStage(event.target.value)}><option>全部阶段</option><option>天使轮</option><option>Pre-A</option><option>A 轮</option><option>A+ 轮</option><option>B 轮</option></select><Icon name="chevron" size={13} /></label>
-                  <label><span>城市</span><select value={city} onChange={(event) => setCity(event.target.value)}><option>全部城市</option><option>苏州</option><option>深圳</option><option>杭州</option><option>上海</option><option>无锡</option><option>广州</option></select><Icon name="chevron" size={13} /></label>
+                  <FilterDropdown id="industry-filter" label="行业" value={industry} options={["全部行业", "智能制造", "绿色科技", "医疗健康", "企业服务", "机器人", "消费零售"]} onChange={setIndustry} />
+                  <FilterDropdown id="stage-filter" label="阶段" value={stage} options={["全部阶段", "天使轮", "Pre-A", "A 轮", "A+ 轮", "B 轮"]} onChange={setStage} />
+                  <FilterDropdown id="city-filter" label="城市" value={city} options={["全部城市", "苏州", "深圳", "杭州", "上海", "无锡", "广州"]} onChange={setCity} />
                   <span className="filter-result">共 {filteredProjects.length} 个项目</span>
                 </div>
                 <div className="project-table" role="table" aria-label="最新项目列表">
@@ -437,7 +547,7 @@ export default function VentureDemo() {
 
       {workspaceOpen && <div className="modal-backdrop" onMouseDown={() => setWorkspaceOpen(false)}><section className="modal workspace-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setWorkspaceOpen(false)}><Icon name="close" size={18} /></button><div className="workspace-head"><div><span className="section-kicker">WORKSPACE</span><h2>{selectedRole === "项目方" ? "项目方工作台" : `${selectedRole}工作台`}</h2><p>本地 Demo · 数据仅保存在当前会话</p></div><button className="secondary-action" onClick={() => setPublishOpen(true)}>发布项目 <Icon name="arrow" size={15} /></button></div>{selectedRole === "项目方" ? <div className="workspace-grid"><div className="workspace-card approval-card"><span className="workspace-label">待处理申请</span>{pendingRequest ? <><div className="approval-person"><i>{pendingRequest.applicant.slice(0, 1)}</i><div><b>{pendingRequest.applicant}申请查看 {pendingRequest.project.name}</b><small>{pendingRequest.reason}</small></div></div><div className="approval-actions"><button className="secondary-action" onClick={() => { setPendingRequest(null); notify("已拒绝这次 BP 查看申请"); }}>拒绝</button><button className="primary-action" onClick={approveRequest}>批准查看 <Icon name="shield" size={15} /></button></div></> : <div className="workspace-empty"><Icon name="shield" size={24} /><b>暂时没有待处理申请</b><span>新的查看申请会出现在这里</span></div>}</div><div className="workspace-card"><span className="workspace-label">我的项目</span><div className="workspace-project-number"><strong>{customProjects.length}</strong><span>个项目已提交</span></div><button className="workspace-link" onClick={() => setPublishOpen(true)}>继续发布项目 <Icon name="arrow" size={14} /></button></div><div className="workspace-card upload-card"><span className="workspace-label">BP 文件</span><div className="upload-box"><span className="bp-file-icon"><Icon name="upload" size={18} /></span><div><b>{bpFile || "上传当前版本 BP"}</b><small>支持 PDF / PPT / PPTX，最大 50MB</small></div><label className="upload-button"><input type="file" accept=".pdf,.ppt,.pptx" onChange={handleFileChange} /><Icon name="upload" size={16} /></label></div></div></div> : <div className="workspace-grid"><div className="workspace-card"><span className="workspace-label">我的关注</span><div className="workspace-project-number"><strong>18</strong><span>个项目正在跟进</span></div><button className="workspace-link" onClick={() => setWorkspaceOpen(false)}>回到项目市场 <Icon name="arrow" size={14} /></button></div><div className="workspace-card"><span className="workspace-label">本周推荐</span><div className="workspace-project-number"><strong>6</strong><span>个新项目匹配方向</span></div><button className="workspace-link" onClick={() => { setWorkspaceOpen(false); document.getElementById("project-list")?.scrollIntoView({ behavior: "smooth" }); }}>查看推荐 <Icon name="arrow" size={14} /></button></div><div className="workspace-card"><span className="workspace-label">BP 授权</span><div className="workspace-project-number"><strong>{authorizedProjects.length}</strong><span>个项目已开放 BP</span></div><button className="workspace-link" onClick={() => notify("授权项目会在这里持续更新")}>查看授权 <Icon name="arrow" size={14} /></button></div></div>}</section></div>}
 
-      {publishOpen && <div className="modal-backdrop nested-backdrop" onMouseDown={() => setPublishOpen(false)}><section className="modal publish-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setPublishOpen(false)}><Icon name="close" size={18} /></button><span className="section-kicker">PUBLISH PROJECT</span><h2>发布一个新项目</h2><p>提交后将进入平台审核，审核通过后公开展示。</p><div className="publish-form"><label className="field-label">项目名称<input value={publishForm.title} onChange={(event) => setPublishForm({ ...publishForm, title: event.target.value })} placeholder="例如：星河智造" /></label><label className="field-label">公司名称<input value={publishForm.company} onChange={(event) => setPublishForm({ ...publishForm, company: event.target.value })} placeholder="请输入公司全称" /></label><div className="form-row"><label className="field-label">行业<select value={publishForm.industry} onChange={(event) => setPublishForm({ ...publishForm, industry: event.target.value })}><option>智能制造</option><option>医疗健康</option><option>绿色科技</option><option>企业服务</option><option>机器人</option><option>消费零售</option></select></label><label className="field-label">城市<select value={publishForm.city} onChange={(event) => setPublishForm({ ...publishForm, city: event.target.value })}><option>苏州</option><option>上海</option><option>深圳</option><option>杭州</option><option>广州</option></select></label></div><div className="form-row"><label className="field-label">融资阶段<select value={publishForm.stage} onChange={(event) => setPublishForm({ ...publishForm, stage: event.target.value })}><option>天使轮</option><option>Pre-A</option><option>A 轮</option><option>B 轮</option></select></label><label className="field-label">计划融资（万元）<input value={publishForm.amount} onChange={(event) => setPublishForm({ ...publishForm, amount: event.target.value })} placeholder="例如：1500" /></label></div><label className="field-label">项目简介<textarea value={publishForm.summary} onChange={(event) => setPublishForm({ ...publishForm, summary: event.target.value })} rows={4} placeholder="用一两句话介绍项目的产品、客户和进展" /></label><label className="upload-box publish-upload"><span className="bp-file-icon"><Icon name="file" size={18} /></span><div><b>{bpFile || "上传 BP（可选）"}</b><small>PDF / PPT / PPTX，单文件最大 50MB</small></div><label className="upload-button"><input type="file" accept=".pdf,.ppt,.pptx" onChange={handleFileChange} /><Icon name="upload" size={16} /></label></label></div><button className="primary-action full" onClick={publishProject}>提交平台审核 <Icon name="arrow" size={16} /></button></section></div>}
+      {publishOpen && <div className="modal-backdrop nested-backdrop" onMouseDown={() => setPublishOpen(false)}><section className="modal publish-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setPublishOpen(false)}><Icon name="close" size={18} /></button><span className="section-kicker">PUBLISH PROJECT</span><h2>发布一个新项目</h2><p>提交后将进入平台审核，审核通过后公开展示。</p><div className="publish-form"><label className="field-label">项目名称<input value={publishForm.title} onChange={(event) => setPublishForm({ ...publishForm, title: event.target.value })} placeholder="例如：星河智造" /></label><label className="field-label">公司名称<input value={publishForm.company} onChange={(event) => setPublishForm({ ...publishForm, company: event.target.value })} placeholder="请输入公司全称" /></label><div className="form-row"><div className="field-label">行业<FilterDropdown id="publish-industry" ariaLabel="行业" label="" variant="field" value={publishForm.industry} options={["智能制造", "医疗健康", "绿色科技", "企业服务", "机器人", "消费零售"]} onChange={(value) => setPublishForm({ ...publishForm, industry: value })} /></div><div className="field-label">城市<FilterDropdown id="publish-city" ariaLabel="城市" label="" variant="field" value={publishForm.city} options={["苏州", "上海", "深圳", "杭州", "广州"]} onChange={(value) => setPublishForm({ ...publishForm, city: value })} /></div></div><div className="form-row"><div className="field-label">融资阶段<FilterDropdown id="publish-stage" ariaLabel="融资阶段" label="" variant="field" value={publishForm.stage} options={["天使轮", "Pre-A", "A 轮", "B 轮"]} onChange={(value) => setPublishForm({ ...publishForm, stage: value })} /></div><label className="field-label">计划融资（万元）<input value={publishForm.amount} onChange={(event) => setPublishForm({ ...publishForm, amount: event.target.value })} placeholder="例如：1500" /></label></div><label className="field-label">项目简介<textarea value={publishForm.summary} onChange={(event) => setPublishForm({ ...publishForm, summary: event.target.value })} rows={4} placeholder="用一两句话介绍项目的产品、客户和进展" /></label><label className="upload-box publish-upload"><span className="bp-file-icon"><Icon name="file" size={18} /></span><div><b>{bpFile || "上传 BP（可选）"}</b><small>PDF / PPT / PPTX，单文件最大 50MB</small></div><label className="upload-button"><input type="file" accept=".pdf,.ppt,.pptx" onChange={handleFileChange} /><Icon name="upload" size={16} /></label></label></div><button className="primary-action full" onClick={publishProject}>提交平台审核 <Icon name="arrow" size={16} /></button></section></div>}
 
       {notificationsOpen && <div className="modal-backdrop" onMouseDown={() => setNotificationsOpen(false)}><section className="modal notification-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setNotificationsOpen(false)}><Icon name="close" size={18} /></button><span className="section-kicker">NOTIFICATIONS</span><h2>通知</h2><div className="notification-list">{notifications.map((notification) => <div className="notification-item" key={notification.id}><span className="notification-icon"><Icon name="bell" size={16} /></span><div><b>{notification.title}</b><p>{notification.detail}</p><small>{notification.time}</small></div></div>)}</div></section></div>}
 
