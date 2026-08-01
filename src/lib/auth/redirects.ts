@@ -23,11 +23,19 @@ export async function requirePlatformRole(role: PlatformRole) {
 }
 
 export async function requireAdmin() {
-  const currentUser = await requireUser();
+  const currentUser = await getCurrentUser();
 
-  if (currentUser.profile.role !== "admin" || !currentUser.profile.admin_role) {
-    redirect(getRoleHomePath(currentUser.profile.role as AnyRole));
+  if (!currentUser) {
+    redirect("/admin/login?reason=auth-required");
   }
 
-  return currentUser;
+  if (currentUser.profile.role === "admin" && currentUser.profile.admin_role) {
+    return currentUser;
+  }
+
+  if (currentUser.profile.role === "admin") {
+    redirect("/login?reason=admin-not-enabled");
+  }
+
+  redirect(getRoleHomePath(currentUser.profile.role as AnyRole));
 }

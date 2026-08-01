@@ -46,3 +46,6 @@ next-env.d.ts
 /output/
 /.failed-node_modules/
 /.incomplete-node_modules-2/
+
+.vercel
+.env*

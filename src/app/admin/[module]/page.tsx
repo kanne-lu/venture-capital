@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/redirects";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -32,6 +32,9 @@ export default async function AdminModulePage({ params }: { params: Promise<{ mo
   const currentUser = await requireAdmin();
   const supabase = await createSupabaseServerClient();
   const key = module as AdminModuleKey;
+  if (currentUser.profile.admin_role === "reviewer" && ["content", "audit"].includes(key)) {
+    redirect("/admin");
+  }
   let rows: Record<string, unknown>[] = [];
 
   if (key === "users") {
@@ -54,5 +57,5 @@ export default async function AdminModulePage({ params }: { params: Promise<{ mo
     rows = (data ?? []) as Record<string, unknown>[];
   }
 
-  return <AdminModule moduleKey={key} moduleLabel={moduleLabels[key]} adminName={currentUser.profile.subject_name} rows={rows} />;
+  return <AdminModule moduleKey={key} moduleLabel={moduleLabels[key]} adminName={currentUser.profile.subject_name} adminRole={currentUser.profile.admin_role} rows={rows} />;
 }

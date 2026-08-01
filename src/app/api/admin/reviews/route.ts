@@ -27,6 +27,10 @@ export async function PATCH(request: Request) {
   const { resourceType, resourceId, status, reason } = parsed.data;
   const supabase = await createSupabaseServerClient();
 
+  if (resourceType === "content" && admin.profile.admin_role !== "super_admin") {
+    return NextResponse.json({ error: "当前管理员没有平台内容管理权限。" }, { status: 403 });
+  }
+
   if (resourceType === "profile") {
     if (!["approved", "rejected", "suspended"].includes(status)) return NextResponse.json({ error: "主体状态无效。" }, { status: 422 });
     const profileResult = await supabase.from("profiles").update({
