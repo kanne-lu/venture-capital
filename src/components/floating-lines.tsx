@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import * as THREE from "three";
 
 type WaveName = "top" | "middle" | "bottom";
@@ -26,6 +27,7 @@ export type FloatingLinesProps = {
   mouseDamping?: number;
   parallax?: boolean;
   parallaxStrength?: number;
+  mixBlendMode?: CSSProperties["mixBlendMode"];
 };
 
 const MAX_GRADIENT_STOPS = 8;
@@ -81,13 +83,13 @@ mat2 rotate(float angle) {
 
 vec3 getLineColor(float t) {
   if (lineGradientCount <= 0) return vec3(0.24, 0.34, 0.96);
-  if (lineGradientCount == 1) return lineGradient[0];
+  if (lineGradientCount == 1) return lineGradient[0] * 0.5;
 
   float scaled = clamp(t, 0.0, 0.9999) * float(lineGradientCount - 1);
   int index = int(floor(scaled));
   float mixAmount = fract(scaled);
   int nextIndex = min(index + 1, lineGradientCount - 1);
-  return mix(lineGradient[index], lineGradient[nextIndex], mixAmount);
+  return mix(lineGradient[index], lineGradient[nextIndex], mixAmount) * 0.5;
 }
 
 float wave(vec2 uv, float offset, vec2 screenUv, vec2 mouseUv, bool shouldBend) {
@@ -203,6 +205,7 @@ export default function FloatingLines({
   mouseDamping = 0.05,
   parallax = true,
   parallaxStrength = 0.2,
+  mixBlendMode = "screen",
 }: FloatingLinesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const targetMouseRef = useRef(new THREE.Vector2(-1000, -1000));
@@ -391,5 +394,5 @@ export default function FloatingLines({
     topWavePosition,
   ]);
 
-  return <div ref={containerRef} className="floating-lines-container" aria-hidden="true" />;
+  return <div ref={containerRef} className="floating-lines-container" style={{ mixBlendMode }} aria-hidden="true" />;
 }

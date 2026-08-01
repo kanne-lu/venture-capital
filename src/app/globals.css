@@ -70,7 +70,7 @@ button, input, select, textarea { outline-color: var(--blue); }
 .hero { position: relative; isolation: isolate; overflow: hidden; border-bottom: 1px solid #e6effa; background: radial-gradient(circle at 83% -10%, rgba(255,255,255,.92), transparent 32%), linear-gradient(118deg, #f0f6ff, #edf5ff 50%, #f8fbff); }
 .floating-lines-container { position: relative; width: 100%; height: 100%; overflow: hidden; }
 .floating-lines-container canvas { display: block; width: 100%; height: 100%; }
-.hero-floating-lines { position: absolute; inset: 0; z-index: 0; opacity: .46; mix-blend-mode: screen; pointer-events: auto; }
+.hero-floating-lines { position: absolute; inset: 0; z-index: 0; opacity: .16; pointer-events: auto; }
 .hero-inner { position: relative; z-index: 1; min-height: 282px; display: grid; grid-template-columns: 41% 59%; align-items: center; padding: 41px 0 39px; }
 .hero-copy { padding-left: 48px; }
 .eyebrow, .section-kicker, .feature-label { margin: 0; color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }

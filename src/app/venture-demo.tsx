@@ -513,7 +513,7 @@ export default function VentureDemo({
 
       <main>
         <section className="hero" id="market">
-          <div className="hero-floating-lines"><FloatingLines /></div>
+          <div className="hero-floating-lines"><FloatingLines mixBlendMode="normal" /></div>
           <div className="hero-inner">
             <div className="hero-copy">
               <p className="eyebrow">一个更高效的创投连接平台</p>
