@@ -301,6 +301,7 @@ export default function VentureDemo({
   const [authUser, setAuthUser] = useState<HomeAuthUser | null>(initialAuthUser);
   const [authMenuOpen, setAuthMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [bpRequestSubmitting, setBpRequestSubmitting] = useState(false);
   const authMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -423,6 +424,35 @@ export default function VentureDemo({
 
   const openProject = (project: Project) => {
     setSelectedProject(project);
+  };
+
+  const requestBpAccess = async () => {
+    if (!selectedProject || bpRequestSubmitting) return;
+
+    setBpRequestSubmitting(true);
+    try {
+      const response = await fetch("/api/bp-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: selectedProject.id,
+          reason: `申请查看${selectedProject.name}的项目 BP，以便评估投资合作可能性。`,
+        }),
+      });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+
+      if (!response.ok) {
+        notify(result?.error || "BP 申请提交失败，请稍后重试");
+        return;
+      }
+
+      setSelectedProject(null);
+      notify("BP 查看申请已提交，请等待审核");
+    } catch {
+      notify("BP 申请提交失败，请稍后重试");
+    } finally {
+      setBpRequestSubmitting(false);
+    }
   };
 
   return (
@@ -588,7 +618,7 @@ export default function VentureDemo({
 
 
 
-      {selectedProject && <div className="modal-backdrop" onMouseDown={() => setSelectedProject(null)}><section className="modal project-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedProject(null)}><Icon name="close" size={18} /></button><div className="detail-top"><i style={{ background: selectedProject.accent }}>{selectedProject.initials}</i><div><span className="section-kicker">PROJECT DETAIL</span><h2>{selectedProject.name}</h2><p>{selectedProject.company}</p></div><span className="detail-stage">{selectedProject.stage}</span></div><p className="detail-summary">{selectedProject.summary}</p><div className="detail-stats"><span><small>行业</small><b>{selectedProject.industry}</b></span><span><small>所在城市</small><b>{selectedProject.city}</b></span><span><small>计划融资</small><b>¥ {selectedProject.amount}</b></span></div><div className="detail-divider" /><div className="bp-row"><div><span className="bp-file-icon"><Icon name="file" size={18} /></span><div><b>项目商业计划书</b><small>完整 BP · 项目方授权后可查看</small></div></div><Link className="primary-action" href="/login">登录后申请查看 BP <Icon name="arrow" size={15} /></Link></div></section></div>}
+      {selectedProject && <div className="modal-backdrop" onMouseDown={() => setSelectedProject(null)}><section className="modal project-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedProject(null)}><Icon name="close" size={18} /></button><div className="detail-top"><i style={{ background: selectedProject.accent }}>{selectedProject.initials}</i><div><span className="section-kicker">PROJECT DETAIL</span><h2>{selectedProject.name}</h2><p>{selectedProject.company}</p></div><span className="detail-stage">{selectedProject.stage}</span></div><p className="detail-summary">{selectedProject.summary}</p><div className="detail-stats"><span><small>行业</small><b>{selectedProject.industry}</b></span><span><small>所在城市</small><b>{selectedProject.city}</b></span><span><small>计划融资</small><b>¥ {selectedProject.amount}</b></span></div><div className="detail-divider" /><div className="bp-row"><div><span className="bp-file-icon"><Icon name="file" size={18} /></span><div><b>项目商业计划书</b><small>完整 BP · 项目方授权后可查看</small></div></div>{authUser ? <button className="primary-action" type="button" onClick={() => void requestBpAccess()} disabled={bpRequestSubmitting}>{bpRequestSubmitting ? "提交中..." : "申请查看 BP"} <Icon name="arrow" size={15} /></button> : <Link className="primary-action" href="/login">登录后申请查看 BP <Icon name="arrow" size={15} /></Link>}</div></section></div>}
 
 
 
