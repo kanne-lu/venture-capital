@@ -72,19 +72,6 @@ export default function AdminNetworkScene() {
       network.add(ring);
     });
 
-    const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
-    const onPointerMove = (event: PointerEvent) => {
-      const bounds = mount.getBoundingClientRect();
-      pointer.targetX = ((event.clientX - bounds.left) / bounds.width - 0.5) * 0.9;
-      pointer.targetY = ((event.clientY - bounds.top) / bounds.height - 0.5) * 0.55;
-    };
-    const onPointerLeave = () => {
-      pointer.targetX = 0;
-      pointer.targetY = 0;
-    };
-    mount.addEventListener("pointermove", onPointerMove);
-    mount.addEventListener("pointerleave", onPointerLeave);
-
     const resize = () => {
       const bounds = mount.getBoundingClientRect();
       const width = Math.max(bounds.width, 1);
@@ -101,10 +88,8 @@ export default function AdminNetworkScene() {
     let animationFrame = 0;
     let drift = 0;
     const renderFrame = () => {
-      pointer.x += (pointer.targetX - pointer.x) * 0.035;
-      pointer.y += (pointer.targetY - pointer.y) * 0.035;
-      network.rotation.y = drift + pointer.x * 0.16;
-      network.rotation.x = Math.sin(drift * 0.55) * 0.08 + pointer.y * 0.08;
+      network.rotation.y = drift;
+      network.rotation.x = Math.sin(drift * 0.55) * 0.08;
       renderer.render(scene, camera);
     };
     const animate = () => {
@@ -130,8 +115,6 @@ export default function AdminNetworkScene() {
       window.cancelAnimationFrame(animationFrame);
       reducedMotion.removeEventListener("change", onMotionPreferenceChange);
       resizeObserver.disconnect();
-      mount.removeEventListener("pointermove", onPointerMove);
-      mount.removeEventListener("pointerleave", onPointerLeave);
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
           object.geometry.dispose();

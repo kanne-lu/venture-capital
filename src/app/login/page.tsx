@@ -230,6 +230,17 @@ export default function LoginPage() {
         </div>
       </section>
 
+      <div className="auth-divider-wave" aria-hidden="true">
+        <svg className="auth-divider-wave-vertical" viewBox="0 0 100 1000" preserveAspectRatio="none" focusable="false">
+          <path className="auth-divider-wave-path auth-divider-wave-glow" d="M50 0 C14 100 86 150 50 250 S14 400 50 500 S86 650 50 750 S14 900 50 1000" />
+          <path className="auth-divider-wave-path auth-divider-wave-line" d="M50 0 C14 100 86 150 50 250 S14 400 50 500 S86 650 50 750 S14 900 50 1000" />
+        </svg>
+        <svg className="auth-divider-wave-horizontal" viewBox="0 0 1000 100" preserveAspectRatio="none" focusable="false">
+          <path className="auth-divider-wave-path auth-divider-wave-glow" d="M0 50 C100 14 150 86 250 50 S400 14 500 50 S650 86 750 50 S900 14 1000 50" />
+          <path className="auth-divider-wave-path auth-divider-wave-line" d="M0 50 C100 14 150 86 250 50 S400 14 500 50 S650 86 750 50 S900 14 1000 50" />
+        </svg>
+      </div>
+
       <section className="auth-form-panel">
         <div className="auth-form-wrap">
           <div className="auth-form-top"><span>已有账号？<button type="button" onClick={() => switchMode("login")}>直接登录</button></span><Link href="/">返回首页</Link></div>
