@@ -4,6 +4,9 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { getRoleHomePath, type PlatformRole } from "@/lib/auth/types";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 type AuthMode = "login" | "register";
 type Role = "投资机构" | "FA" | "政府招商" | "项目方";
@@ -24,6 +27,13 @@ const roles: Array<{ name: Role; short: string; description: string; icon: IconN
   { name: "政府招商", short: "政", description: "产业招商 · 项目引进", icon: "government", subjectLabel: "招商部门 / 区域", subjectPlaceholder: "请输入部门或区域名称" },
   { name: "项目方", short: "项", description: "发布项目 · 获取融资", icon: "briefcase", subjectLabel: "公司名称", subjectPlaceholder: "请输入公司全称" },
 ];
+
+const roleToDbRole: Record<Role, PlatformRole> = {
+  投资机构: "investor",
+  FA: "fa",
+  政府招商: "government",
+  项目方: "project",
+};
 
 function LoginIcon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = {
@@ -91,7 +101,36 @@ export default function LoginPage() {
     return "";
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const requestPasswordReset = async () => {
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setError("请先填写注册时使用的邮箱地址。");
+      return;
+    }
+
+    if (!isSupabaseConfigured()) {
+      setError("当前环境还没有连接 Supabase，请先配置环境变量。");
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setSubmitting(true);
+
+    const supabase = createSupabaseBrowserClient();
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email.trim(), {
+      redirectTo: `${window.location.origin}/login/reset`,
+    });
+
+    setSubmitting(false);
+    if (resetError) {
+      setError(resetError.message || "密码重置邮件发送失败，请稍后再试。");
+      return;
+    }
+
+    setNotice("密码重置邮件已发送，请检查邮箱。");
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setNotice("");
     const validationMessage = validate();
@@ -102,19 +141,68 @@ export default function LoginPage() {
 
     setError("");
     setSubmitting(true);
-    window.setTimeout(() => {
+
+    if (!isSupabaseConfigured()) {
+      setSubmitting(false);
+      setError("当前环境还没有连接 Supabase，请先配置环境变量。");
+      return;
+    }
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+
       if (mode === "login") {
-        router.push("/#market");
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email: form.email.trim(),
+          password: form.password,
+        });
+
+        if (loginError) {
+          setSubmitting(false);
+          setError(loginError.message || "邮箱或密码不正确。");
+          return;
+        }
+
+        router.push("/account");
+        router.refresh();
+        return;
+      }
+
+      const role = roleToDbRole[selectedRole as Role];
+      const { data, error: registerError } = await supabase.auth.signUp({
+        email: form.email.trim(),
+        password: form.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            role,
+            subject_name: form.subject.trim(),
+            contact_name: form.contact.trim(),
+            phone: form.phone.trim(),
+            terms_accepted: "true",
+            terms_version: "2026-08-01",
+          },
+        },
+      });
+
+      if (registerError) {
+        setSubmitting(false);
+        setError(registerError.message || "注册失败，请稍后再试。");
         return;
       }
 
       setSubmitting(false);
-      setNotice("注册成功，正在进入你的工作台…");
-      window.setTimeout(() => {
-        const destination = selectedRole ? `/?role=${encodeURIComponent(selectedRole)}#market` : "/#market";
-        router.push(destination);
-      }, 450);
-    }, 250);
+      if (data.session) {
+        setNotice("注册成功，正在进入你的个人中心…");
+        router.push(getRoleHomePath(role));
+        router.refresh();
+      } else {
+        setNotice("注册成功，请先验证邮箱；验证后即可进入你的个人中心。");
+      }
+    } catch {
+      setSubmitting(false);
+      setError("认证服务暂时不可用，请检查 Supabase 配置后重试。");
+    }
   };
 
   return (
@@ -148,7 +236,7 @@ export default function LoginPage() {
             <label className="auth-field">邮箱地址<input autoComplete="email" type="email" value={form.email} onChange={(event) => updateField("email", event.target.value)} placeholder="name@company.com" /></label>
             <label className="auth-field">密码<input autoComplete={mode === "login" ? "current-password" : "new-password"} type="password" value={form.password} onChange={(event) => updateField("password", event.target.value)} placeholder="至少 6 位密码" /></label>
             {mode === "register" && <label className="auth-field">确认密码<input autoComplete="new-password" type="password" value={form.confirmPassword} onChange={(event) => updateField("confirmPassword", event.target.value)} placeholder="再次输入密码" /></label>}
-            {mode === "login" && <div className="auth-form-meta"><label><input type="checkbox" />记住本次登录</label><button type="button" onClick={() => setNotice("Demo 暂不支持找回密码")}>忘记密码？</button></div>}
+            {mode === "login" && <div className="auth-form-meta"><label><input type="checkbox" />记住本次登录</label><button type="button" onClick={() => void requestPasswordReset()}>忘记密码？</button></div>}
             {error && <p className="auth-feedback error" role="alert">{error}</p>}
             {notice && <p className="auth-feedback success" role="status"><LoginIcon name="check" size={15} />{notice}</p>}
             <button className="auth-submit" type="submit" disabled={submitting}>{submitting ? "正在处理…" : mode === "login" ? "登录启峰创投" : "完成注册并进入平台"}<LoginIcon name="arrow" size={16} /></button>

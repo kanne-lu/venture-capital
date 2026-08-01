@@ -128,7 +128,7 @@ export default function AboutPage() {
         <section className="about-cta-section"><div className="about-shell about-cta-inner"><div><p className="about-kicker">READY FOR THE NEXT MOVE?</p><h2>让下一次连接，<br /><span>发生在启峰。</span></h2></div><Link href="/login" className="about-cta-action">进入启峰创投 <AboutIcon name="arrow" size={16} /></Link></div></section>
       </main>
 
-      <footer className="about-footer"><div className="about-shell"><div className="about-footer-main"><Link className="brand" href="/"><img className="brand-logo" src="/qifeng-capital-logo.png" alt="启峰创投" /></Link><p>连接项目、资本与产业，让长期价值更快相遇。</p><div className="about-footer-links"><Link href="/#market">项目市场</Link><Link href="/about">平台介绍</Link><Link href="/login">进入平台</Link></div></div><div className="about-footer-bottom"><span>© 2026 启峰创投 QIFENG CAPITAL</span><span>本地 Demo · 数据仅用于产品演示</span></div></div></footer>
+      <footer className="about-footer"><div className="about-shell"><div className="about-footer-main"><Link className="brand" href="/"><img className="brand-logo" src="/qifeng-capital-logo.png" alt="启峰创投" /></Link><p>连接项目、资本与产业，让长期价值更快相遇。</p><div className="about-footer-links"><Link href="/#market">项目市场</Link><Link href="/about">平台介绍</Link><Link href="/login">进入平台</Link></div></div><div className="about-footer-bottom"><span>© 2026 启峰创投 QIFENG CAPITAL</span><span>主体审核 · 信息授权 · 全程留痕</span></div></div></footer>
     </div>
   );
 }

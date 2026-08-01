@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 import Link from "next/link";
 
-type Role = "访客" | "投资机构" | "FA" | "政府招商" | "项目方";
 type ProjectStatus = "已通过" | "待审核";
 
 type Project = {
@@ -20,24 +19,6 @@ type Project = {
   accent: string;
   status: ProjectStatus;
 };
-
-type AccessRequest = {
-  project: Project;
-  reason: string;
-  applicant: string;
-};
-
-type PublishForm = {
-  title: string;
-  company: string;
-  industry: string;
-  city: string;
-  stage: string;
-  amount: string;
-  summary: string;
-};
-
-const roles: Role[] = ["投资机构", "FA", "政府招商", "项目方"];
 
 const seedProjects: Project[] = [
   {
@@ -284,47 +265,39 @@ function FilterDropdown({ id, label, ariaLabel, value, options, onChange, varian
 }
 
 export default function VentureDemo() {
-  const [activeNav, setActiveNav] = useState("项目市场");
   const [searchTab, setSearchTab] = useState("找项目");
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState("全部行业");
   const [stage, setStage] = useState("全部阶段");
   const [city, setCity] = useState("全部城市");
-  const [selectedRole, setSelectedRole] = useState<Role>("访客");
-  const [rolePanelOpen, setRolePanelOpen] = useState(false);
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [databaseProjects, setDatabaseProjects] = useState<Project[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [requestProject, setRequestProject] = useState<Project | null>(null);
-  const [requestReason, setRequestReason] = useState("希望进一步了解项目团队与商业化进展。");
-  const [pendingRequest, setPendingRequest] = useState<AccessRequest | null>(null);
-  const [authorizedProjects, setAuthorizedProjects] = useState<string[]>([]);
   const [notifications, setNotifications] = useState(notificationSeed);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [bpFile, setBpFile] = useState("");
-  const [publishOpen, setPublishOpen] = useState(false);
-  const [customProjects, setCustomProjects] = useState<Project[]>([]);
-  const [publishForm, setPublishForm] = useState<PublishForm>({
-    title: "",
-    company: "",
-    industry: "智能制造",
-    city: "苏州",
-    stage: "天使轮",
-    amount: "",
-    summary: "",
-  });
 
   useEffect(() => {
-    const roleParam = new URLSearchParams(window.location.search).get("role");
-    if (!roleParam || !roles.includes(roleParam as Role)) return;
-
-    const role = roleParam as Role;
-    setSelectedRole(role);
-    setWorkspaceOpen(true);
-    window.history.replaceState(null, "", `${window.location.pathname}#market`);
+    // Protected actions always start from the real auth flow. The public page
+    // must never infer or switch a user's platform identity from a query string.
+    void fetch("/api/projects").then(async (response) => response.ok ? response.json() : null).then((result) => {
+      if (!result?.projects) return;
+      setDatabaseProjects(result.projects.map((project: { id: string; name: string; company: string; summary: string; industry: string; stage: string; city: string; amount: number | null }) => ({
+        id: project.id,
+        name: project.name,
+        company: project.company,
+        summary: project.summary,
+        industry: project.industry,
+        stage: project.stage,
+        city: project.city,
+        amount: project.amount === null ? "待定" : `${project.amount} 万`,
+        initials: project.name.slice(0, 1),
+        accent: "#2478ee",
+        status: "已通过",
+      })));
+    });
   }, []);
 
-  const allProjects = useMemo(() => [...customProjects, ...seedProjects], [customProjects]);
+  const allProjects = useMemo(() => databaseProjects.length > 0 ? databaseProjects : seedProjects, [databaseProjects]);
   const publicProjects = useMemo(
     () => allProjects.filter((project) => project.status === "已通过"),
     [allProjects],
@@ -347,87 +320,6 @@ export default function VentureDemo() {
     window.setTimeout(() => setToast(null), 2800);
   };
 
-  const appendNotification = (title: string, detail: string) => {
-    setNotifications((current) => [
-      { id: `n-${Date.now()}`, title, detail, time: "刚刚", read: false },
-      ...current,
-    ]);
-  };
-
-  const chooseRole = (role: Role) => {
-    setSelectedRole(role);
-    setRolePanelOpen(false);
-    if (role === "项目方") setWorkspaceOpen(true);
-    notify(role === "访客" ? "已切换为访客浏览模式" : `已切换为${role}身份`);
-  };
-
-  const requestAccess = (project: Project) => {
-    if (selectedRole === "访客") {
-      setRolePanelOpen(true);
-      notify("请先选择投资机构、FA 或政府招商身份");
-      return;
-    }
-    setRequestProject(project);
-    setRequestReason("希望进一步了解项目团队与商业化进展。");
-  };
-
-  const submitRequest = () => {
-    if (!requestProject) return;
-    setPendingRequest({ project: requestProject, reason: requestReason, applicant: selectedRole });
-    appendNotification("BP 查看申请已提交", `你已向 ${requestProject.name} 发起查看申请。`);
-    setRequestProject(null);
-    notify("申请已提交，等待项目方审批");
-  };
-
-  const approveRequest = () => {
-    if (!pendingRequest) return;
-    setAuthorizedProjects((current) => [...new Set([...current, pendingRequest.project.id])]);
-    appendNotification("BP 查看申请已通过", `${pendingRequest.project.name} 已向你开放 BP。`);
-    setPendingRequest(null);
-    notify("已批准申请，现在可以查看 BP");
-  };
-
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const validType = /\.(pdf|pptx?)$/i.test(file.name);
-    if (!validType) {
-      notify("仅支持 PDF、PPT、PPTX 文件");
-      return;
-    }
-    if (file.size > 50 * 1024 * 1024) {
-      notify("单个 BP 文件不能超过 50MB");
-      return;
-    }
-    setBpFile(file.name);
-    notify("BP 已选择，Demo 中将保存到本地会话");
-  };
-
-  const publishProject = () => {
-    if (!publishForm.title.trim() || !publishForm.company.trim() || !publishForm.summary.trim()) {
-      notify("请先填写项目名称、公司名称和项目简介");
-      return;
-    }
-    const project: Project = {
-      id: `custom-${Date.now()}`,
-      name: publishForm.title,
-      company: publishForm.company,
-      summary: publishForm.summary,
-      industry: publishForm.industry,
-      stage: publishForm.stage,
-      city: publishForm.city,
-      amount: publishForm.amount ? `${publishForm.amount} 万` : "待定",
-      initials: publishForm.title.slice(0, 1),
-      accent: "#2469e8",
-      status: "待审核",
-    };
-    setCustomProjects((current) => [project, ...current]);
-    setPublishOpen(false);
-    setWorkspaceOpen(true);
-    appendNotification("项目已提交审核", `${project.name} 已进入平台审核队列。`);
-    notify("项目已提交，审核通过后会出现在公开市场");
-  };
-
   const openProject = (project: Project) => {
     setSelectedProject(project);
   };
@@ -436,15 +328,14 @@ export default function VentureDemo() {
     <div className="venture-app">
       <header className="topbar">
         <div className="topbar-inner">
-          <button className="brand" onClick={() => { setActiveNav("项目市场"); window.scrollTo({ top: 0, behavior: "smooth" }); }} aria-label="返回启峰创投首页">
+          <Link className="brand" href="/#market" aria-label="返回启峰创投首页">
             <img className="brand-logo" src="/qifeng-capital-logo.png" alt="启峰创投 QIFENG CAPITAL" />
-          </button>
+          </Link>
           <nav className="main-nav" aria-label="主导航">
-            {["项目市场", "投资机构", "FA 资源", "政府招商"].map((item) => (
-              <button key={item} className={`nav-link ${activeNav === item ? "active" : ""}`} onClick={() => { setActiveNav(item); notify(`${item}模块 Demo 即将展开`); }}>
-                {item}{item !== "项目市场" && <span className="nav-arrow"><Icon name="chevron" size={12} /></span>}
-              </button>
-            ))}
+            <Link href="/#market" className="nav-link active">项目市场</Link>
+            <Link href="/login" className="nav-link">投资机构<span className="nav-arrow"><Icon name="chevron" size={12} /></span></Link>
+            <Link href="/login" className="nav-link">FA 资源<span className="nav-arrow"><Icon name="chevron" size={12} /></span></Link>
+            <Link href="/login" className="nav-link">政府招商<span className="nav-arrow"><Icon name="chevron" size={12} /></span></Link>
             <Link href="/about" className="nav-link">平台介绍</Link>
           </nav>
           <div className="header-actions">
@@ -456,7 +347,7 @@ export default function VentureDemo() {
             <button className="header-link notification-trigger" onClick={() => { setNotificationsOpen(true); setNotifications((current) => current.map((item) => ({ ...item, read: true }))); }} aria-label="查看通知">
               <Icon name="bell" size={18} />{unreadCount > 0 && <span className="notification-dot">{unreadCount}</span>}
             </button>
-            {selectedRole === "访客" ? <Link className="role-button" href="/login">选择身份<Icon name="chevron" size={13} /></Link> : <button className="role-button" onClick={() => setRolePanelOpen(true)}>{selectedRole}<Icon name="chevron" size={13} /></button>}
+            <Link className="role-button" href="/login">登录 / 注册<Icon name="chevron" size={13} /></Link>
           </div>
         </div>
       </header>
@@ -530,35 +421,31 @@ export default function VentureDemo() {
 
             <aside className="side-column">
               <section className="panel side-panel">
-                <div className="panel-heading compact"><div><span className="section-kicker">TRENDING</span><h2>行业热度</h2></div><button className="tiny-more" onClick={() => notify("行业趋势 Demo 即将展开")}>更多</button></div>
+                <div className="panel-heading compact"><div><span className="section-kicker">TRENDING</span><h2>行业热度</h2></div><button className="tiny-more" onClick={() => notify("行业热度会持续根据平台项目更新")}>更多</button></div>
                 <div className="trend-list"><div><span>1</span><b>智能制造</b><i className="trend-bar" style={{ width: "88%" }} /><em>+28%</em></div><div><span>2</span><b>医疗健康</b><i className="trend-bar" style={{ width: "73%" }} /><em>+21%</em></div><div><span>3</span><b>绿色科技</b><i className="trend-bar" style={{ width: "64%" }} /><em>+18%</em></div><div><span>4</span><b>企业服务</b><i className="trend-bar" style={{ width: "52%" }} /><em>+12%</em></div></div>
               </section>
               <section className="panel side-panel institution-panel">
-                <div className="panel-heading compact"><div><span className="section-kicker">INSTITUTIONS</span><h2>活跃机构</h2></div><button className="tiny-more" onClick={() => notify("机构榜单 Demo 即将展开")}>榜单</button></div>
+                <div className="panel-heading compact"><div><span className="section-kicker">INSTITUTIONS</span><h2>活跃机构</h2></div><button className="tiny-more" onClick={() => notify("机构榜单将在主体入驻后持续更新")}>榜单</button></div>
                 <div className="institution-list"><div><i className="rank">01</i><span className="institution-logo blue-logo">启</span><b>启明创投</b><small>本周关注 28 项</small></div><div><i className="rank">02</i><span className="institution-logo orange-logo">元</span><b>元禾控股</b><small>本周关注 21 项</small></div><div><i className="rank">03</i><span className="institution-logo purple-logo">经</span><b>经纬创投</b><small>本周关注 18 项</small></div></div>
               </section>
-              <section className="side-callout"><div className="callout-icon"><Icon name="users" size={19} /></div><div><strong>我是项目方</strong><span>发布项目，连接资本与资源</span></div><button onClick={() => { setSelectedRole("项目方"); setWorkspaceOpen(true); }}>发布项目 <Icon name="arrow" size={14} /></button></section>
+              <section className="side-callout"><div className="callout-icon"><Icon name="users" size={19} /></div><div><strong>我是项目方</strong><span>发布项目，连接资本与资源</span></div><Link href="/login">发布项目 <Icon name="arrow" size={14} /></Link></section>
             </aside>
           </div>
         </section>
 
         <section className="content-wrap content-section">
-          <div className="section-heading-row"><div><span className="section-kicker">INSIGHT</span><h2>创投观察</h2></div><button className="more-link" onClick={() => notify("创投观察内容 Demo 即将展开")}>更多内容 <Icon name="arrow" size={15} /></button></div>
+          <div className="section-heading-row"><div><span className="section-kicker">INSIGHT</span><h2>创投观察</h2></div><button className="more-link" onClick={() => notify("研究内容会在平台内容中心持续更新")}>更多内容 <Icon name="arrow" size={15} /></button></div>
           <div className="insight-grid"><article className="insight-card insight-main"><div className="insight-visual gradient-blue"><span>资本</span><strong>产业升级的<br />下一站在哪里？</strong><i>01</i></div><div className="insight-meta"><span>趋势洞察</span><b>从项目热度看产业投资的新方向</b><small>2026.07.28 · 启峰创投研究院</small></div></article><article className="insight-card"><div className="mini-visual gradient-orange"><span>方法论</span><strong>投资人如何<br />建立第一印象</strong><i>02</i></div><div className="insight-meta"><span>投资方法</span><b>一份项目初筛清单</b><small>2026.07.25 · 8 分钟阅读</small></div></article><article className="insight-card"><div className="mini-visual gradient-purple"><span>区域观察</span><strong>长三角<br />硬科技地图</strong><i>03</i></div><div className="insight-meta"><span>区域研究</span><b>制造业新势力正在发生</b><small>2026.07.21 · 12 分钟阅读</small></div></article></div>
         </section>
       </main>
 
-      <footer className="footer"><div className="footer-inner"><div className="footer-brand"><img className="footer-logo" src="/qifeng-capital-logo.png" alt="启峰创投 QIFENG CAPITAL" /><p>让好项目与长期资本相遇。</p></div><div className="footer-links"><div><b>平台服务</b><a href="#market">项目市场</a><a href="#market">机构入驻</a><a href="#market">FA 资源</a></div><div><b>关于启峰创投</b><a href="#market">平台介绍</a><a href="#market">审核机制</a><a href="#market">联系我们</a></div><div><b>帮助中心</b><a href="#market">使用指南</a><a href="#market">隐私政策</a><a href="#market">服务条款</a></div></div></div><div className="footer-bottom"><span>© 2026 启峰创投 Qifeng Capital Demo</span><span>本地演示版本 · 数据仅供展示</span></div></footer>
+      <footer className="footer"><div className="footer-inner"><div className="footer-brand"><img className="footer-logo" src="/qifeng-capital-logo.png" alt="启峰创投 QIFENG CAPITAL" /><p>让好项目与长期资本相遇。</p></div><div className="footer-links"><div><b>平台服务</b><a href="#market">项目市场</a><a href="#market">机构入驻</a><a href="#market">FA 资源</a></div><div><b>关于启峰创投</b><a href="#market">平台介绍</a><a href="#market">审核机制</a><a href="#market">联系我们</a></div><div><b>帮助中心</b><a href="#market">使用指南</a><a href="#market">隐私政策</a><a href="#market">服务条款</a></div></div></div><div className="footer-bottom"><span>© 2026 启峰创投 Qifeng Capital</span><span>主体审核 · 信息授权 · 全程留痕</span></div></footer>
 
-      {rolePanelOpen && <div className="modal-backdrop nested-backdrop" onMouseDown={() => setRolePanelOpen(false)}><section className="modal role-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setRolePanelOpen(false)}><Icon name="close" size={18} /></button><span className="section-kicker">CHOOSE YOUR ROLE</span><h2>你想以什么身份进入启峰创投？</h2><p>不同身份会进入对应工作台， Demo 中可以随时切换。</p><div className="role-grid">{roles.map((role) => <button key={role} className={`role-card ${selectedRole === role ? "selected" : ""}`} onClick={() => chooseRole(role)}><span className="role-card-icon"><Icon name={role === "投资机构" ? "building" : role === "FA" ? "users" : role === "政府招商" ? "chart" : "briefcase"} size={20} /></span><b>{role}</b><small>{role === "投资机构" ? "发现项目 · 管理关注" : role === "FA" ? "连接资源 · 推荐项目" : role === "政府招商" ? "产业招商 · 项目引进" : "发布项目 · 获取融资"}</small></button>)}</div><button className="guest-link" onClick={() => chooseRole("访客")}>继续浏览公开市场</button></section></div>}
 
-      {requestProject && <div className="modal-backdrop nested-backdrop" onMouseDown={() => setRequestProject(null)}><section className="modal request-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setRequestProject(null)}><Icon name="close" size={18} /></button><span className="section-kicker">REQUEST BP ACCESS</span><h2>申请查看项目 BP</h2><div className="request-project"><i style={{ background: requestProject.accent }}>{requestProject.initials}</i><div><b>{requestProject.name}</b><span>{requestProject.company}</span></div></div><label className="field-label">申请理由<textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={4} /></label><div className="privacy-note"><Icon name="shield" size={17} /><span>项目方审批通过后，你才能查看或下载完整 BP。</span></div><button className="primary-action full" onClick={submitRequest}>提交申请 <Icon name="arrow" size={16} /></button></section></div>}
 
-      {selectedProject && <div className="modal-backdrop" onMouseDown={() => setSelectedProject(null)}><section className="modal project-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedProject(null)}><Icon name="close" size={18} /></button><div className="detail-top"><i style={{ background: selectedProject.accent }}>{selectedProject.initials}</i><div><span className="section-kicker">PROJECT DETAIL</span><h2>{selectedProject.name}</h2><p>{selectedProject.company}</p></div><span className="detail-stage">{selectedProject.stage}</span></div><p className="detail-summary">{selectedProject.summary}</p><div className="detail-stats"><span><small>行业</small><b>{selectedProject.industry}</b></span><span><small>所在城市</small><b>{selectedProject.city}</b></span><span><small>计划融资</small><b>¥ {selectedProject.amount}</b></span></div><div className="detail-divider" /><div className="bp-row"><div><span className="bp-file-icon"><Icon name="file" size={18} /></span><div><b>项目商业计划书</b><small>完整 BP · 项目方授权后可查看</small></div></div>{authorizedProjects.includes(selectedProject.id) ? <button className="authorized-button" onClick={() => notify("Demo 中 BP 已授权，可进行本地预览")}>已获授权 <Icon name="shield" size={15} /></button> : <button className="primary-action" onClick={() => requestAccess(selectedProject)}>申请查看 BP <Icon name="arrow" size={15} /></button>}</div></section></div>}
+      {selectedProject && <div className="modal-backdrop" onMouseDown={() => setSelectedProject(null)}><section className="modal project-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedProject(null)}><Icon name="close" size={18} /></button><div className="detail-top"><i style={{ background: selectedProject.accent }}>{selectedProject.initials}</i><div><span className="section-kicker">PROJECT DETAIL</span><h2>{selectedProject.name}</h2><p>{selectedProject.company}</p></div><span className="detail-stage">{selectedProject.stage}</span></div><p className="detail-summary">{selectedProject.summary}</p><div className="detail-stats"><span><small>行业</small><b>{selectedProject.industry}</b></span><span><small>所在城市</small><b>{selectedProject.city}</b></span><span><small>计划融资</small><b>¥ {selectedProject.amount}</b></span></div><div className="detail-divider" /><div className="bp-row"><div><span className="bp-file-icon"><Icon name="file" size={18} /></span><div><b>项目商业计划书</b><small>完整 BP · 项目方授权后可查看</small></div></div><Link className="primary-action" href="/login">登录后申请查看 BP <Icon name="arrow" size={15} /></Link></div></section></div>}
 
-      {workspaceOpen && <div className="modal-backdrop" onMouseDown={() => setWorkspaceOpen(false)}><section className="modal workspace-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setWorkspaceOpen(false)}><Icon name="close" size={18} /></button><div className="workspace-head"><div><span className="section-kicker">WORKSPACE</span><h2>{selectedRole === "项目方" ? "项目方工作台" : `${selectedRole}工作台`}</h2><p>本地 Demo · 数据仅保存在当前会话</p></div><button className="secondary-action" onClick={() => setPublishOpen(true)}>发布项目 <Icon name="arrow" size={15} /></button></div>{selectedRole === "项目方" ? <div className="workspace-grid"><div className="workspace-card approval-card"><span className="workspace-label">待处理申请</span>{pendingRequest ? <><div className="approval-person"><i>{pendingRequest.applicant.slice(0, 1)}</i><div><b>{pendingRequest.applicant}申请查看 {pendingRequest.project.name}</b><small>{pendingRequest.reason}</small></div></div><div className="approval-actions"><button className="secondary-action" onClick={() => { setPendingRequest(null); notify("已拒绝这次 BP 查看申请"); }}>拒绝</button><button className="primary-action" onClick={approveRequest}>批准查看 <Icon name="shield" size={15} /></button></div></> : <div className="workspace-empty"><Icon name="shield" size={24} /><b>暂时没有待处理申请</b><span>新的查看申请会出现在这里</span></div>}</div><div className="workspace-card"><span className="workspace-label">我的项目</span><div className="workspace-project-number"><strong>{customProjects.length}</strong><span>个项目已提交</span></div><button className="workspace-link" onClick={() => setPublishOpen(true)}>继续发布项目 <Icon name="arrow" size={14} /></button></div><div className="workspace-card upload-card"><span className="workspace-label">BP 文件</span><div className="upload-box"><span className="bp-file-icon"><Icon name="upload" size={18} /></span><div><b>{bpFile || "上传当前版本 BP"}</b><small>支持 PDF / PPT / PPTX，最大 50MB</small></div><label className="upload-button"><input type="file" accept=".pdf,.ppt,.pptx" onChange={handleFileChange} /><Icon name="upload" size={16} /></label></div></div></div> : <div className="workspace-grid"><div className="workspace-card"><span className="workspace-label">我的关注</span><div className="workspace-project-number"><strong>18</strong><span>个项目正在跟进</span></div><button className="workspace-link" onClick={() => setWorkspaceOpen(false)}>回到项目市场 <Icon name="arrow" size={14} /></button></div><div className="workspace-card"><span className="workspace-label">本周推荐</span><div className="workspace-project-number"><strong>6</strong><span>个新项目匹配方向</span></div><button className="workspace-link" onClick={() => { setWorkspaceOpen(false); document.getElementById("project-list")?.scrollIntoView({ behavior: "smooth" }); }}>查看推荐 <Icon name="arrow" size={14} /></button></div><div className="workspace-card"><span className="workspace-label">BP 授权</span><div className="workspace-project-number"><strong>{authorizedProjects.length}</strong><span>个项目已开放 BP</span></div><button className="workspace-link" onClick={() => notify("授权项目会在这里持续更新")}>查看授权 <Icon name="arrow" size={14} /></button></div></div>}</section></div>}
 
-      {publishOpen && <div className="modal-backdrop nested-backdrop" onMouseDown={() => setPublishOpen(false)}><section className="modal publish-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setPublishOpen(false)}><Icon name="close" size={18} /></button><span className="section-kicker">PUBLISH PROJECT</span><h2>发布一个新项目</h2><p>提交后将进入平台审核，审核通过后公开展示。</p><div className="publish-form"><label className="field-label">项目名称<input value={publishForm.title} onChange={(event) => setPublishForm({ ...publishForm, title: event.target.value })} placeholder="例如：星河智造" /></label><label className="field-label">公司名称<input value={publishForm.company} onChange={(event) => setPublishForm({ ...publishForm, company: event.target.value })} placeholder="请输入公司全称" /></label><div className="form-row"><div className="field-label">行业<FilterDropdown id="publish-industry" ariaLabel="行业" label="" variant="field" value={publishForm.industry} options={["智能制造", "医疗健康", "绿色科技", "企业服务", "机器人", "消费零售"]} onChange={(value) => setPublishForm({ ...publishForm, industry: value })} /></div><div className="field-label">城市<FilterDropdown id="publish-city" ariaLabel="城市" label="" variant="field" value={publishForm.city} options={["苏州", "上海", "深圳", "杭州", "广州"]} onChange={(value) => setPublishForm({ ...publishForm, city: value })} /></div></div><div className="form-row"><div className="field-label">融资阶段<FilterDropdown id="publish-stage" ariaLabel="融资阶段" label="" variant="field" value={publishForm.stage} options={["天使轮", "Pre-A", "A 轮", "B 轮"]} onChange={(value) => setPublishForm({ ...publishForm, stage: value })} /></div><label className="field-label">计划融资（万元）<input value={publishForm.amount} onChange={(event) => setPublishForm({ ...publishForm, amount: event.target.value })} placeholder="例如：1500" /></label></div><label className="field-label">项目简介<textarea value={publishForm.summary} onChange={(event) => setPublishForm({ ...publishForm, summary: event.target.value })} rows={4} placeholder="用一两句话介绍项目的产品、客户和进展" /></label><label className="upload-box publish-upload"><span className="bp-file-icon"><Icon name="file" size={18} /></span><div><b>{bpFile || "上传 BP（可选）"}</b><small>PDF / PPT / PPTX，单文件最大 50MB</small></div><label className="upload-button"><input type="file" accept=".pdf,.ppt,.pptx" onChange={handleFileChange} /><Icon name="upload" size={16} /></label></label></div><button className="primary-action full" onClick={publishProject}>提交平台审核 <Icon name="arrow" size={16} /></button></section></div>}
 
       {notificationsOpen && <div className="modal-backdrop" onMouseDown={() => setNotificationsOpen(false)}><section className="modal notification-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setNotificationsOpen(false)}><Icon name="close" size={18} /></button><span className="section-kicker">NOTIFICATIONS</span><h2>通知</h2><div className="notification-list">{notifications.map((notification) => <div className="notification-item" key={notification.id}><span className="notification-icon"><Icon name="bell" size={16} /></span><div><b>{notification.title}</b><p>{notification.detail}</p><small>{notification.time}</small></div></div>)}</div></section></div>}
 
