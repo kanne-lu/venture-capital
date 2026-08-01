@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getRoleHomePath, roleLabels, type AnyRole } from "@/lib/auth/types";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -156,6 +157,8 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
       return <svg {...common}><path d="M5 12h13" /><path d="m13 6 6 6-6 6" /></svg>;
     case "external":
       return <svg {...common}><path d="M14 5h5v5" /><path d="M19 5 11 13" /><path d="M18 13v5H6V6h5" /></svg>;
+    case "logout":
+      return <svg {...common}><path d="M10 5H6v14h4" /><path d="M14 8l4 4-4 4" /><path d="M18 12H9" /></svg>;
     case "briefcase":
       return <svg {...common}><rect x="3" y="6.5" width="18" height="13" rx="2" /><path d="M8 6.5V4h8v2.5M3 11h18M10 11v2h4v-2" /></svg>;
     case "building":
@@ -293,6 +296,7 @@ function FilterDropdown({ id, label, ariaLabel, value, options, onChange, varian
 }
 
 export default function VentureDemo({ initialAuthUser = null }: { initialAuthUser?: HomeAuthUser | null }) {
+  const router = useRouter();
   const [searchTab, setSearchTab] = useState("找项目");
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState("全部行业");
@@ -304,6 +308,9 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<HomeAuthUser | null>(initialAuthUser);
+  const [authMenuOpen, setAuthMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const authMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
@@ -337,6 +344,26 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!authMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (authMenuRef.current && !authMenuRef.current.contains(event.target as Node)) {
+        setAuthMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setAuthMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [authMenuOpen]);
 
   useEffect(() => {
     // Protected actions always start from the real auth flow. The public page
@@ -382,6 +409,25 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
     window.setTimeout(() => setToast(null), 2800);
   };
 
+  const handleSignOut = async () => {
+    if (signingOut) return;
+
+    setSigningOut(true);
+    setAuthMenuOpen(false);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      setAuthUser(null);
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setSigningOut(false);
+      notify("退出登录失败，请稍后重试");
+    }
+  };
+
   const openProject = (project: Project) => {
     setSelectedProject(project);
   };
@@ -410,10 +456,32 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
               <Icon name="bell" size={18} />{unreadCount > 0 && <span className="notification-dot">{unreadCount}</span>}
             </button>
             {authUser ? (
-              <Link className="role-button role-button-authenticated" href={authUser.homePath} aria-label={`进入${authUser.roleLabel}个人中心`}>
-                <span className="role-button-copy"><b>{authUser.subjectName}</b><small>{authUser.roleLabel} · 个人中心</small></span>
-                <Icon name="chevron" size={13} />
-              </Link>
+              <div className="auth-menu" ref={authMenuRef}>
+                <button
+                  className="role-button role-button-authenticated"
+                  type="button"
+                  aria-expanded={authMenuOpen}
+                  aria-haspopup="menu"
+                  aria-controls="homepage-account-menu"
+                  aria-label={`打开${authUser.roleLabel}账户菜单`}
+                  onClick={() => setAuthMenuOpen((current) => !current)}
+                >
+                  <span className="role-button-copy"><b>{authUser.subjectName}</b><small>{authUser.roleLabel} · 个人中心</small></span>
+                  <Icon name="chevron" size={13} />
+                </button>
+                {authMenuOpen && (
+                  <div className="auth-menu-panel" id="homepage-account-menu" role="menu" aria-label="账户操作">
+                    <Link className="auth-menu-item" href={authUser.homePath} role="menuitem" onClick={() => setAuthMenuOpen(false)}>
+                      <Icon name="external" size={15} />
+                      <span>进入个人中心</span>
+                    </Link>
+                    <button className="auth-menu-item auth-menu-item-danger" type="button" role="menuitem" onClick={() => void handleSignOut()} disabled={signingOut}>
+                      <Icon name="logout" size={15} />
+                      <span>{signingOut ? "正在退出…" : "退出登录"}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : <Link className="role-button" href="/login">登录 / 注册<Icon name="chevron" size={13} /></Link>}
           </div>
         </div>

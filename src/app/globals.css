@@ -53,10 +53,18 @@ button, input, select, textarea { outline-color: var(--blue); }
 .role-button-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; line-height: 1.1; }
 .role-button-copy b { max-width: 108px; overflow: hidden; color: #2d5f9a; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .role-button-copy small { color: #7c9bc0; font-size: 9px; }
+.auth-menu { position: relative; }
+.auth-menu-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 45; width: 184px; padding: 6px; border: 1px solid #dce7f5; border-radius: 8px; background: #fff; box-shadow: 0 16px 34px rgba(38, 83, 139, .16); }
+.auth-menu-item { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 36px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: #456789; font-size: 11px; text-align: left; }
+.auth-menu-item:hover, .auth-menu-item:focus-visible { outline: 0; background: #f1f7ff; color: var(--blue); }
+.auth-menu-item-danger { color: #c76666; }
+.auth-menu-item-danger:hover, .auth-menu-item-danger:focus-visible { background: #fff3f3; color: #bd5151; }
+.auth-menu-item:disabled { cursor: wait; opacity: .65; }
 @media (max-width: 560px) {
   .role-button-authenticated { max-width: 128px; padding: 6px 7px; }
   .role-button-copy b { max-width: 72px; }
   .role-button-copy small { display: none; }
+  .auth-menu-panel { right: 0; width: 172px; }
 }
 
 .hero { border-bottom: 1px solid #e6effa; background: radial-gradient(circle at 83% -10%, rgba(255,255,255,.92), transparent 32%), linear-gradient(118deg, #f0f6ff, #edf5ff 50%, #f8fbff); }
