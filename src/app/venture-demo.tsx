@@ -576,7 +576,7 @@ export default function VentureDemo({
               </section>
 
               <section className="feature-band">
-                <div className="feature-copy"><span className="feature-label">FOR CAPITAL</span><h3>找到与你长期主义<br /><em>同频的项目</em></h3><p>用结构化信息，节省每一次项目判断的时间。</p><Link href="/login">进入我的工作台 <Icon name="arrow" size={15} /></Link></div>
+                <div className="feature-copy"><span className="feature-label">FOR CAPITAL</span><h3>找到与你长期主义<br /><em>同频的项目</em></h3><p>用结构化信息，节省每一次项目判断的时间。</p><Link href={authUser?.homePath ?? "/login"}>进入我的工作台 <Icon name="arrow" size={15} /></Link></div>
                 <div className="orbit-art"><span className="orbit orbit-a" /><span className="orbit orbit-b" /><span className="orbit-core">峰</span><span className="art-tag art-tag-a">{featuredProject ? `${featuredProject.stage} · ${featuredProject.industry}` : "暂无公开项目"}</span><span className="art-tag art-tag-b">{featuredProject?.city ?? "等待审核"}</span></div>
               </section>
             </div>
