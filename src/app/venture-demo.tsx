@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import FloatingLines from "@/components/floating-lines";
 import { getRoleHomePath, roleLabels, type AnyRole } from "@/lib/auth/types";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -512,6 +513,7 @@ export default function VentureDemo({
 
       <main>
         <section className="hero" id="market">
+          <div className="hero-floating-lines"><FloatingLines /></div>
           <div className="hero-inner">
             <div className="hero-copy">
               <p className="eyebrow">一个更高效的创投连接平台</p>
