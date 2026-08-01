@@ -76,8 +76,8 @@ button, input, select, textarea { outline-color: var(--blue); }
 .hero-desc { max-width: 360px; margin: 0; color: #607086; font-size: 14px; line-height: 1.65; }
 .hero-rule { width: 92px; height: 18px; margin: 16px 0 12px; color: var(--blue); }
 .hero-rule svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.hero-wave-line { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 8 5; animation: hero-wave-drift 1.8s linear infinite; }
-@keyframes hero-wave-drift { to { stroke-dashoffset: -26; } }
+.hero-wave-line { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; transform-box: fill-box; transform-origin: center; animation: hero-wave-breathe 1.8s ease-in-out infinite; }
+@keyframes hero-wave-breathe { 0%, 100% { opacity: .76; transform: translate(0, 0); } 50% { opacity: 1; transform: translate(2px, -1px); } }
 @media (prefers-reduced-motion: reduce) { .hero-wave-line { animation: none; } }
 .hero-proof { display: flex; gap: 18px; color: #7890ac; font-size: 11px; }
 .hero-proof span { display: inline-flex; align-items: center; gap: 6px; }
