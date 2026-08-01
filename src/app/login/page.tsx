@@ -68,6 +68,10 @@ function LoginIcon({ name, size = 20 }: { name: IconName; size?: number }) {
 
 const initialForm: FormValues = { email: "", password: "", confirmPassword: "", contact: "", phone: "", subject: "" };
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
@@ -117,7 +121,7 @@ export default function LoginPage() {
     setSubmitting(true);
 
     const supabase = createSupabaseBrowserClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(form.email.trim(), {
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizeEmail(form.email), {
       redirectTo: `${window.location.origin}/login/reset`,
     });
 
@@ -153,7 +157,7 @@ export default function LoginPage() {
 
       if (mode === "login") {
         const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: form.email.trim(),
+          email: normalizeEmail(form.email),
           password: form.password,
         });
 
@@ -170,7 +174,7 @@ export default function LoginPage() {
 
       const role = roleToDbRole[selectedRole as Role];
       const { data, error: registerError } = await supabase.auth.signUp({
-        email: form.email.trim(),
+        email: normalizeEmail(form.email),
         password: form.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -188,6 +192,12 @@ export default function LoginPage() {
       if (registerError) {
         setSubmitting(false);
         setError(registerError.message || "注册失败，请稍后再试。");
+        return;
+      }
+
+      if (data.user?.identities?.length === 0) {
+        setSubmitting(false);
+        setError("这个邮箱已经注册，请切换到登录并使用原密码。");
         return;
       }
 

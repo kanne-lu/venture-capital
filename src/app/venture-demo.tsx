@@ -1,8 +1,36 @@
 "use client";
 
+import type { User } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import Link from "next/link";
+import { getRoleHomePath, roleLabels, type AnyRole } from "@/lib/auth/types";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+
+export type HomeAuthUser = {
+  subjectName: string;
+  role: AnyRole;
+  roleLabel: string;
+  homePath: string;
+};
+
+type ProfileSummary = {
+  subject_name: string | null;
+  role: string | null;
+};
+
+function toHomeAuthUser(user: User, profile: ProfileSummary | null): HomeAuthUser | null {
+  if (!profile || !profile.role || !Object.prototype.hasOwnProperty.call(roleLabels, profile.role)) return null;
+
+  const role = profile.role as AnyRole;
+  return {
+    subjectName: profile.subject_name || user.email || "已登录用户",
+    role,
+    roleLabel: roleLabels[role],
+    homePath: getRoleHomePath(role),
+  };
+}
 
 type ProjectStatus = "已通过" | "待审核";
 
@@ -264,7 +292,7 @@ function FilterDropdown({ id, label, ariaLabel, value, options, onChange, varian
   );
 }
 
-export default function VentureDemo() {
+export default function VentureDemo({ initialAuthUser = null }: { initialAuthUser?: HomeAuthUser | null }) {
   const [searchTab, setSearchTab] = useState("找项目");
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState("全部行业");
@@ -275,6 +303,40 @@ export default function VentureDemo() {
   const [notifications, setNotifications] = useState(notificationSeed);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<HomeAuthUser | null>(initialAuthUser);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const supabase = createSupabaseBrowserClient();
+    let disposed = false;
+
+    const syncAuthUser = async (user: User | null) => {
+      if (!user) {
+        if (!disposed) setAuthUser(null);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subject_name, role")
+        .eq("id", user.id)
+        .maybeSingle();
+      const nextAuthUser = toHomeAuthUser(user, profile as ProfileSummary | null);
+
+      if (!disposed) setAuthUser(nextAuthUser);
+    };
+
+    void supabase.auth.getSession().then(({ data: { session } }) => syncAuthUser(session?.user ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => void syncAuthUser(session?.user ?? null), 0);
+    });
+
+    return () => {
+      disposed = true;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     // Protected actions always start from the real auth flow. The public page
@@ -347,7 +409,12 @@ export default function VentureDemo() {
             <button className="header-link notification-trigger" onClick={() => { setNotificationsOpen(true); setNotifications((current) => current.map((item) => ({ ...item, read: true }))); }} aria-label="查看通知">
               <Icon name="bell" size={18} />{unreadCount > 0 && <span className="notification-dot">{unreadCount}</span>}
             </button>
-            <Link className="role-button" href="/login">登录 / 注册<Icon name="chevron" size={13} /></Link>
+            {authUser ? (
+              <Link className="role-button role-button-authenticated" href={authUser.homePath} aria-label={`进入${authUser.roleLabel}个人中心`}>
+                <span className="role-button-copy"><b>{authUser.subjectName}</b><small>{authUser.roleLabel} · 个人中心</small></span>
+                <Icon name="chevron" size={13} />
+              </Link>
+            ) : <Link className="role-button" href="/login">登录 / 注册<Icon name="chevron" size={13} /></Link>}
           </div>
         </div>
       </header>
