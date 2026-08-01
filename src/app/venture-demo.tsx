@@ -512,8 +512,8 @@ export default function VentureDemo({
       </header>
 
       <main>
-        <section className="hero" id="market">
-          <div className="hero-floating-lines"><FloatingLines mixBlendMode="normal" /></div>
+        <section className="hero" id="market" data-floating-lines-surface>
+          <div className="hero-floating-lines"><FloatingLines bendRadius={5} bendStrength={-13} mouseDamping={0.09} parallaxStrength={0.34} mixBlendMode="normal" /></div>
           <div className="hero-inner">
             <div className="hero-copy">
               <p className="eyebrow">一个更高效的创投连接平台</p>

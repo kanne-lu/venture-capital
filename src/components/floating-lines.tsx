@@ -200,11 +200,11 @@ export default function FloatingLines({
   bottomWavePosition = DEFAULT_BOTTOM_POSITION,
   animationSpeed = 1.1,
   interactive = true,
-  bendRadius = 19,
-  bendStrength = -9,
-  mouseDamping = 0.05,
+  bendRadius = 5,
+  bendStrength = -13,
+  mouseDamping = 0.09,
   parallax = true,
-  parallaxStrength = 0.2,
+  parallaxStrength = 0.34,
   mixBlendMode = "screen",
 }: FloatingLinesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -236,6 +236,8 @@ export default function FloatingLines({
     renderer.domElement.style.height = "100%";
     renderer.domElement.setAttribute("aria-hidden", "true");
     container.appendChild(renderer.domElement);
+
+    const interactionTarget = container.closest<HTMLElement>("[data-floating-lines-surface]") ?? renderer.domElement;
 
     const countFor = (waveName: WaveName) => {
       if (typeof lineCount === "number") return lineCount;
@@ -320,24 +322,27 @@ export default function FloatingLines({
     };
 
     if (interactive) {
-      renderer.domElement.addEventListener("pointermove", handlePointerMove);
-      renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
+      interactionTarget.addEventListener("pointermove", handlePointerMove);
+      interactionTarget.addEventListener("pointerleave", handlePointerLeave);
     }
 
     const clock = new THREE.Clock();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let animationFrame = 0;
     const renderFrame = () => {
-      uniforms.iTime.value = clock.getElapsedTime();
+      const delta = Math.min(clock.getDelta(), 0.05);
+      const damping = Math.min(Math.max(mouseDamping, 0.01), 0.5);
+      const frameDamping = 1 - Math.pow(1 - damping, Math.max(delta, 1 / 60) * 60);
+      uniforms.iTime.value = clock.elapsedTime;
 
       if (interactive) {
-        currentMouseRef.current.lerp(targetMouseRef.current, mouseDamping);
+        currentMouseRef.current.lerp(targetMouseRef.current, frameDamping);
         uniforms.iMouse.value.copy(currentMouseRef.current);
-        currentInfluenceRef.current += (targetInfluenceRef.current - currentInfluenceRef.current) * mouseDamping;
+        currentInfluenceRef.current += (targetInfluenceRef.current - currentInfluenceRef.current) * frameDamping;
         uniforms.bendInfluence.value = currentInfluenceRef.current;
       }
       if (parallax) {
-        currentParallaxRef.current.lerp(targetParallaxRef.current, mouseDamping);
+        currentParallaxRef.current.lerp(targetParallaxRef.current, frameDamping);
         uniforms.parallaxOffset.value.copy(currentParallaxRef.current);
       }
 
@@ -368,8 +373,8 @@ export default function FloatingLines({
       reducedMotion.removeEventListener("change", syncMotionPreference);
       resizeObserver?.disconnect();
       if (interactive) {
-        renderer.domElement.removeEventListener("pointermove", handlePointerMove);
-        renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
+        interactionTarget.removeEventListener("pointermove", handlePointerMove);
+        interactionTarget.removeEventListener("pointerleave", handlePointerLeave);
       }
       geometry.dispose();
       material.dispose();
