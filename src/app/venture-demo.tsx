@@ -33,7 +33,40 @@ function toHomeAuthUser(user: User, profile: ProfileSummary | null): HomeAuthUse
   };
 }
 
-type ProjectStatus = "已通过" | "待审核";
+export type HomeProjectRecord = {
+  id: string;
+  name: string;
+  company: string;
+  summary: string;
+  industry: string;
+  stage: string;
+  city: string;
+  amount: number | null;
+};
+
+export type HomeInstitutionRecord = {
+  id: string;
+  name: string;
+  role: string;
+  location: string | null;
+  logo_path: string | null;
+};
+
+export type PlatformMetrics = {
+  projectCount: number | null;
+  institutionCount: number | null;
+  faCount: number | null;
+  fundingAmount: number | null;
+};
+
+const emptyPlatformMetrics: PlatformMetrics = {
+  projectCount: null,
+  institutionCount: null,
+  faCount: null,
+  fundingAmount: null,
+};
+
+type ProjectStatus = "已通过";
 
 type Project = {
   id: string;
@@ -48,87 +81,6 @@ type Project = {
   accent: string;
   status: ProjectStatus;
 };
-
-const seedProjects: Project[] = [
-  {
-    id: "p-1",
-    name: "星河智造",
-    company: "苏州星河智能科技有限公司",
-    summary: "面向柔性制造的工业视觉与智能调度平台，已服务 120+ 家工厂。",
-    industry: "智能制造",
-    stage: "A 轮",
-    city: "苏州",
-    amount: "3000 万",
-    initials: "星",
-    accent: "#2469e8",
-    status: "已通过",
-  },
-  {
-    id: "p-2",
-    name: "碳寻科技",
-    company: "深圳碳寻能源科技有限公司",
-    summary: "用数字孪生技术帮助园区完成碳排监测、预测与节能决策。",
-    industry: "绿色科技",
-    stage: "Pre-A",
-    city: "深圳",
-    amount: "1500 万",
-    initials: "碳",
-    accent: "#16a47c",
-    status: "已通过",
-  },
-  {
-    id: "p-3",
-    name: "澜途医疗",
-    company: "杭州澜途医疗器械有限公司",
-    summary: "下一代微创介入器械研发商，核心产品进入多家三甲医院临床验证。",
-    industry: "医疗健康",
-    stage: "B 轮",
-    city: "杭州",
-    amount: "8000 万",
-    initials: "澜",
-    accent: "#8a62e8",
-    status: "已通过",
-  },
-  {
-    id: "p-4",
-    name: "云栈数据",
-    company: "上海云栈数据服务有限公司",
-    summary: "为制造企业提供低代码数据中台与 AI 经营分析工具。",
-    industry: "企业服务",
-    stage: "天使轮",
-    city: "上海",
-    amount: "800 万",
-    initials: "云",
-    accent: "#ef8a37",
-    status: "已通过",
-  },
-  {
-    id: "p-5",
-    name: "禾木机器人",
-    company: "无锡禾木机器人有限公司",
-    summary: "专注仓储移动机器人的软硬件一体化方案，拥有自研导航算法。",
-    industry: "机器人",
-    stage: "A+ 轮",
-    city: "无锡",
-    amount: "5000 万",
-    initials: "禾",
-    accent: "#2478ee",
-    status: "已通过",
-  },
-  {
-    id: "p-6",
-    name: "木棉消费",
-    company: "广州木棉消费品牌管理有限公司",
-    summary: "新一代功能型食品品牌，聚焦年轻家庭的日常营养场景。",
-    industry: "消费零售",
-    stage: "Pre-A",
-    city: "广州",
-    amount: "1200 万",
-    initials: "木",
-    accent: "#ef6b69",
-    status: "已通过",
-  },
-];
 
 const notificationSeed = [
   { id: "n-1", title: "欢迎来到启峰创投", detail: "你可以先浏览公开项目市场。", time: "刚刚", read: false },
@@ -185,6 +137,33 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 function showAmount(amount: string) {
   return amount.replace(" 万", "");
 }
+
+function mapHomeProject(project: HomeProjectRecord): Project {
+  return {
+    ...project,
+    amount: project.amount === null ? "待定" : `${project.amount} 万`,
+    initials: project.name.slice(0, 1),
+    accent: "#2478ee",
+    status: "已通过",
+  };
+}
+
+function formatMetric(value: number | null) {
+  return value === null ? "—" : value.toLocaleString("zh-CN");
+}
+
+function formatFunding(value: number | null) {
+  if (value === null) return "—";
+
+  return `¥ ${(value / 10000).toLocaleString("zh-CN", { maximumFractionDigits: 2 })} 亿`;
+}
+
+const institutionRoleLabels: Record<string, string> = {
+  investor: "投资机构",
+  fa: "FA",
+  government: "政府招商",
+  project: "项目方",
+};
 
 type FilterDropdownProps = {
   id: string;
@@ -295,14 +274,26 @@ function FilterDropdown({ id, label, ariaLabel, value, options, onChange, varian
   );
 }
 
-export default function VentureDemo({ initialAuthUser = null }: { initialAuthUser?: HomeAuthUser | null }) {
+export default function VentureDemo({
+  initialAuthUser = null,
+  initialProjects = [],
+  initialMetrics = emptyPlatformMetrics,
+  initialInstitutions = [],
+}: {
+  initialAuthUser?: HomeAuthUser | null;
+  initialProjects?: HomeProjectRecord[];
+  initialMetrics?: PlatformMetrics;
+  initialInstitutions?: HomeInstitutionRecord[];
+}) {
   const router = useRouter();
   const [searchTab, setSearchTab] = useState("找项目");
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState("全部行业");
   const [stage, setStage] = useState("全部阶段");
   const [city, setCity] = useState("全部城市");
-  const [databaseProjects, setDatabaseProjects] = useState<Project[]>([]);
+  const [databaseProjects, setDatabaseProjects] = useState<Project[]>(() => initialProjects.map(mapHomeProject));
+  const [platformMetrics] = useState<PlatformMetrics>(initialMetrics);
+  const institutions = initialInstitutions;
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(notificationSeed);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -369,27 +360,14 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
     // Protected actions always start from the real auth flow. The public page
     // must never infer or switch a user's platform identity from a query string.
     void fetch("/api/projects").then(async (response) => response.ok ? response.json() : null).then((result) => {
-      if (!result?.projects) return;
-      setDatabaseProjects(result.projects.map((project: { id: string; name: string; company: string; summary: string; industry: string; stage: string; city: string; amount: number | null }) => ({
-        id: project.id,
-        name: project.name,
-        company: project.company,
-        summary: project.summary,
-        industry: project.industry,
-        stage: project.stage,
-        city: project.city,
-        amount: project.amount === null ? "待定" : `${project.amount} 万`,
-        initials: project.name.slice(0, 1),
-        accent: "#2478ee",
-        status: "已通过",
-      })));
+      if (!Array.isArray(result?.projects)) return;
+      setDatabaseProjects(result.projects.map(mapHomeProject));
     });
   }, []);
 
-  const allProjects = useMemo(() => databaseProjects.length > 0 ? databaseProjects : seedProjects, [databaseProjects]);
   const publicProjects = useMemo(
-    () => allProjects.filter((project) => project.status === "已通过"),
-    [allProjects],
+    () => databaseProjects.filter((project) => project.status === "已通过"),
+    [databaseProjects],
   );
   const filteredProjects = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -401,6 +379,21 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
       return matchesQuery && matchesIndustry && matchesStage && matchesCity;
     });
   }, [city, industry, publicProjects, query, stage]);
+
+  const industryTrends = useMemo(() => {
+    const counts = new Map<string, number>();
+    publicProjects.forEach((project) => counts.set(project.industry, (counts.get(project.industry) ?? 0) + 1));
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const maxCount = sorted[0]?.[1] ?? 0;
+
+    return sorted.slice(0, 4).map(([name, count]) => ({
+      name,
+      count,
+      width: maxCount > 0 ? Math.max(24, Math.round((count / maxCount) * 100)) : 0,
+    }));
+  }, [publicProjects]);
+
+  const featuredProject = publicProjects[0] ?? null;
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
@@ -494,7 +487,11 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
               <p className="eyebrow">一个更高效的创投连接平台</p>
               <h1>让好项目<br /><span>与长期资本相遇</span></h1>
               <p className="hero-desc">投资机构、FA、政府招商部门与项目方，在这里发现彼此的下一步。</p>
-              <div className="hero-rule" />
+              <div className="hero-rule" aria-hidden="true">
+                <svg viewBox="0 0 92 18" focusable="false">
+                  <path className="hero-wave-line" d="M1 9C8 1 16 1 23 9s15 8 23 0 15-8 23 0 15 8 22 0" />
+                </svg>
+              </div>
               <div className="hero-proof"><span><Icon name="shield" size={16} />真实主体审核</span><span><Icon name="chart" size={16} />项目持续更新</span></div>
             </div>
             <div className="search-stage">
@@ -515,11 +512,11 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
 
         <section className="metrics-strip" aria-label="平台数据概览">
           <div className="metrics-inner">
-            <div className="metric"><span className="metric-icon"><Icon name="briefcase" size={19} /></span><div><strong>12,846</strong><small>平台项目</small></div></div>
-            <div className="metric"><span className="metric-icon"><Icon name="building" size={19} /></span><div><strong>3,280</strong><small>入驻机构</small></div></div>
-            <div className="metric"><span className="metric-icon"><Icon name="users" size={19} /></span><div><strong>486</strong><small>FA 顾问</small></div></div>
-            <div className="metric"><span className="metric-icon"><Icon name="chart" size={19} /></span><div><strong>¥ 386 亿</strong><small>累计融资金额</small></div></div>
-            <div className="metric metric-note"><div><strong>每日更新</strong><small>平台项目与资本动态</small></div><Icon name="arrow" size={18} /></div>
+            <div className="metric"><span className="metric-icon"><Icon name="briefcase" size={19} /></span><div><strong>{formatMetric(platformMetrics.projectCount)}</strong><small>已公开项目</small></div></div>
+            <div className="metric"><span className="metric-icon"><Icon name="building" size={19} /></span><div><strong>{formatMetric(platformMetrics.institutionCount)}</strong><small>已认证机构</small></div></div>
+            <div className="metric"><span className="metric-icon"><Icon name="users" size={19} /></span><div><strong>{formatMetric(platformMetrics.faCount)}</strong><small>已认证 FA</small></div></div>
+            <div className="metric"><span className="metric-icon"><Icon name="chart" size={19} /></span><div><strong>{formatFunding(platformMetrics.fundingAmount)}</strong><small>公开项目融资需求</small></div></div>
+            <div className="metric metric-note"><div><strong>实时同步</strong><small>已审核公开数据</small></div><Icon name="arrow" size={18} /></div>
           </div>
         </section>
 
@@ -544,24 +541,37 @@ export default function VentureDemo({ initialAuthUser = null }: { initialAuthUse
                       <span className="project-name"><i style={{ background: project.accent }}>{project.initials}</i><b>{project.name}</b><small>{project.company}</small></span>
                       <span className="muted-cell">{project.industry}</span><span className="stage-cell">{project.stage}</span><span className="muted-cell">{project.city}</span><span className="amount-cell">¥ {showAmount(project.amount)}<small> 万</small></span><Icon name="arrow" size={16} />
                     </button>
-                  )) : <div className="empty-state"><Icon name="search" size={24} /><strong>没有匹配的项目</strong><span>试试更换行业、城市或搜索关键词</span></div>}
+                  )) : <div className="empty-state"><Icon name="search" size={24} /><strong>{databaseProjects.length === 0 ? "暂无公开项目" : "没有匹配的项目"}</strong><span>{databaseProjects.length === 0 ? "项目审核通过后会在这里展示" : "试试更换行业、城市或搜索关键词"}</span></div>}
                 </div>
               </section>
 
               <section className="feature-band">
                 <div className="feature-copy"><span className="feature-label">FOR CAPITAL</span><h3>找到与你长期主义<br /><em>同频的项目</em></h3><p>用结构化信息，节省每一次项目判断的时间。</p><Link href="/login">进入我的工作台 <Icon name="arrow" size={15} /></Link></div>
-                <div className="orbit-art"><span className="orbit orbit-a" /><span className="orbit orbit-b" /><span className="orbit-core">优</span><span className="art-tag art-tag-a">A 轮 · 36 项</span><span className="art-tag art-tag-b">新能源</span></div>
+                <div className="orbit-art"><span className="orbit orbit-a" /><span className="orbit orbit-b" /><span className="orbit-core">优</span><span className="art-tag art-tag-a">{featuredProject ? `${featuredProject.stage} · ${featuredProject.industry}` : "暂无公开项目"}</span><span className="art-tag art-tag-b">{featuredProject?.city ?? "等待审核"}</span></div>
               </section>
             </div>
 
             <aside className="side-column">
               <section className="panel side-panel">
                 <div className="panel-heading compact"><div><span className="section-kicker">TRENDING</span><h2>行业热度</h2></div><button className="tiny-more" onClick={() => notify("行业热度会持续根据平台项目更新")}>更多</button></div>
-                <div className="trend-list"><div><span>1</span><b>智能制造</b><i className="trend-bar" style={{ width: "88%" }} /><em>+28%</em></div><div><span>2</span><b>医疗健康</b><i className="trend-bar" style={{ width: "73%" }} /><em>+21%</em></div><div><span>3</span><b>绿色科技</b><i className="trend-bar" style={{ width: "64%" }} /><em>+18%</em></div><div><span>4</span><b>企业服务</b><i className="trend-bar" style={{ width: "52%" }} /><em>+12%</em></div></div>
+                <div className="trend-list">
+                  {industryTrends.length > 0 ? industryTrends.map((trend, index) => (
+                    <div key={trend.name}><span>{index + 1}</span><b>{trend.name}</b><i className="trend-bar" style={{ width: `${trend.width}%` }} /><em>{trend.count} 项</em></div>
+                  )) : <div className="side-empty">暂无公开项目行业数据</div>}
+                </div>
               </section>
               <section className="panel side-panel institution-panel">
-                <div className="panel-heading compact"><div><span className="section-kicker">INSTITUTIONS</span><h2>活跃机构</h2></div><button className="tiny-more" onClick={() => notify("机构榜单将在主体入驻后持续更新")}>榜单</button></div>
-                <div className="institution-list"><div><i className="rank">01</i><span className="institution-logo blue-logo">启</span><b>启明创投</b><small>本周关注 28 项</small></div><div><i className="rank">02</i><span className="institution-logo orange-logo">元</span><b>元禾控股</b><small>本周关注 21 项</small></div><div><i className="rank">03</i><span className="institution-logo purple-logo">经</span><b>经纬创投</b><small>本周关注 18 项</small></div></div>
+                <div className="panel-heading compact"><div><span className="section-kicker">INSTITUTIONS</span><h2>已认证机构</h2></div><button className="tiny-more" onClick={() => notify("机构榜单将在主体入驻后持续更新")}>榜单</button></div>
+                <div className="institution-list">
+                  {institutions.length > 0 ? institutions.map((institution, index) => (
+                    <div key={institution.id}>
+                      <i className="rank">{String(index + 1).padStart(2, "0")}</i>
+                      <span className={`institution-logo ${["blue-logo", "orange-logo", "purple-logo"][index] ?? "blue-logo"}`}>{institution.name.slice(0, 1)}</span>
+                      <b>{institution.name}</b>
+                      <small>{institutionRoleLabels[institution.role] ?? "已认证主体"}{institution.location ? ` · ${institution.location}` : ""}</small>
+                    </div>
+                  )) : <div className="side-empty">暂无已认证机构</div>}
+                </div>
               </section>
               <section className="side-callout"><div className="callout-icon"><Icon name="users" size={19} /></div><div><strong>我是项目方</strong><span>发布项目，连接资本与资源</span></div><Link href="/login">发布项目 <Icon name="arrow" size={14} /></Link></section>
             </aside>
