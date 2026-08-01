@@ -66,33 +66,6 @@ function LoginIcon({ name, size = 20 }: { name: IconName; size?: number }) {
   }
 }
 
-function AuthReferenceBlob({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 500 350" preserveAspectRatio="none" focusable="false">
-      <g transform="translate(628,-17) scale(100)" opacity="0.3">
-        <path
-          className="auth-reference-blob-back"
-          d="M4.10125 0 C4.10125 0.5525 4.3542 0.8338 4.1835 1.3593 S3.6427 1.9637 3.318 2.4107 S3.0325 3.2339 2.5855 3.5587 S1.7928 3.7298 1.2674 3.9005 S0.5525 4.3988 0 4.3988 S-0.7419 4.0713 -1.2674 3.9005 S-2.1385 3.8834 -2.5855 3.5587 S-2.9932 2.8576 -3.318 2.4107 S-4.0127 1.8847 -4.1835 1.3593 S-4.1013 0.5525 -4.1013 0 S-4.3542 -0.8338 -4.1835 -1.3593 S-3.6427 -1.9637 -3.318 -2.4107 S-3.0325 -3.2339 -2.5855 -3.5587 S-1.7928 -3.7298 -1.2674 -3.9005 S-0.5525 -4.3988 0 -4.3988 S0.7419 -4.0713 1.2674 -3.9005 S2.1385 -3.8834 2.5855 -3.5587 S2.9932 -2.8576 3.318 -2.4107 S4.0127 -1.8847 4.1835 -1.3593 S4.1013 -0.5525 4.1013 0"
-          strokeWidth="0"
-          transform="rotate(19)"
-        >
-          <animateTransform className="auth-reference-blob-animation" attributeName="transform" type="rotate" dur="10s" repeatCount="indefinite" values="0;36" />
-        </path>
-      </g>
-      <g transform="translate(704,-56) scale(100)" opacity="0.9">
-        <path
-          className="auth-reference-blob-front"
-          d="M4.9215 0 C4.9215 0.663 5.225 1.0006 5.0202 1.6311 S4.3713 2.3564 3.9816 2.8928 S3.639 3.8807 3.1026 4.2704 S2.1514 4.4757 1.5208 4.6806 S0.663 5.2785 0 5.2785 S-0.8903 4.8855 -1.5208 4.6806 S-2.5662 4.6601 -3.1026 4.2704 S-3.5919 3.4292 -3.9816 2.8928 S-4.8153 2.2617 -5.0202 1.6311 S-4.9215 0.663 -4.9215 0 S-5.225 -1.0006 -5.0202 -1.6311 S-4.3713 -2.3564 -3.9816 -2.8928 S-3.639 -3.8807 -3.1026 -4.2704 S-2.1514 -4.4757 -1.5208 -4.6806 S-0.663 -5.2785 0 -5.2785 S0.8903 -4.8855 1.5208 -4.6806 S2.5662 -4.6601 3.1026 -4.2704 S3.5919 -3.4292 3.9816 -2.8928 S4.8153 -2.2617 5.0202 -1.6311 S4.9215 -0.663 4.9215 0"
-          strokeWidth="0"
-          transform="rotate(2.04427)"
-        >
-          <animateTransform className="auth-reference-blob-animation" attributeName="transform" type="rotate" dur="6s" repeatCount="indefinite" values="0;36" />
-        </path>
-      </g>
-    </svg>
-  );
-}
-
 const initialForm: FormValues = { email: "", password: "", confirmPassword: "", contact: "", phone: "", subject: "" };
 
 function normalizeEmail(email: string) {
@@ -244,8 +217,6 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
-      <div className="auth-orb auth-orb-one" />
-      <div className="auth-orb auth-orb-two" />
       <div className="auth-grid-lines" />
 
       <section className="auth-brand-panel">
@@ -255,10 +226,6 @@ export default function LoginPage() {
           <div className="auth-connection-card"><div className="auth-connection-top"><span>ONE PLATFORM</span><b>04 ROLES</b></div><div className="auth-role-orbit"><div className="auth-orbit orbit-small" /><div className="auth-orbit orbit-large" /><div className="auth-orbit-core"><small>连接</small><strong>启峰</strong></div><span className="auth-orbit-node orbit-node-one">资本</span><span className="auth-orbit-node orbit-node-two">FA</span><span className="auth-orbit-node orbit-node-three">政</span><span className="auth-orbit-node orbit-node-four">项</span></div><div className="auth-connection-bottom"><span>DISCOVER · MATCH · MOVE</span><em>现在，进入你的下一步</em></div></div>
           <div className="auth-brand-proof"><span><LoginIcon name="shield" size={16} />主体与项目审核</span><span><LoginIcon name="check" size={16} />信息边界清晰</span></div>
         </div>
-      <div className="auth-divider-wave" aria-hidden="true">
-        <AuthReferenceBlob className="auth-divider-wave-vertical" />
-        <AuthReferenceBlob className="auth-divider-wave-horizontal" />
-      </div>
       </section>
 
       <section className="auth-form-panel">
