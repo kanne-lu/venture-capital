@@ -118,7 +118,7 @@ button, input, select, textarea { outline-color: var(--blue); }
 .main-column { display: flex; flex-direction: column; gap: 24px; }
 .side-column { display: flex; flex-direction: column; gap: 24px; }
 .panel { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); box-shadow: var(--shadow); }
-.project-panel { overflow: hidden; }
+.project-panel { overflow: visible; }
 .panel-heading, .section-heading-row { display: flex; align-items: flex-end; justify-content: space-between; }
 .panel-heading { padding: 25px 27px 19px; }
 .panel-heading.compact { padding: 23px 22px 15px; }
